@@ -2,11 +2,13 @@
 title: "Test"
 author: "Steph Gervasi"
 date: "5/13/2019"
-output: 
+output:
+  pdf_document:
+    toc: yes
   html_document:
-    toc: true
-    number_sections: true
+    number_sections: yes
     theme: united
+    toc: yes
 ---
 # Load package for this demo
 ```{r}
@@ -218,6 +220,37 @@ ggviolin(ToothGrowth, x = "dose", y = "len", fill = "dose",
 
 ## Bar plots and references
 ```{r}
+# Load data
+data("mtcars")
+dfm <- mtcars
+# Convert the cyl variable to a factor
+dfm$cyl <- as.factor(dfm$cyl)
+# Add the name colums
+dfm$name <- rownames(dfm)
+# Inspect the data
+head(dfm[, c("name", "wt", "mpg", "cyl")])
+
+ggbarplot(dfm, x = "name", y = "mpg",
+          fill = "cyl",               # change fill color by cyl
+          color = "white",            # Set bar border colors to white
+          palette = "jco",            # jco journal color palett. see ?ggpar
+          sort.val = "desc",          # Sort the value in dscending order
+          sort.by.groups = FALSE,     # Don't sort inside each group
+          x.text.angle = 90           # Rotate vertically x axis texts
+          )
+
+
+# sort bars in each group
+
+ggbarplot(dfm, x = "name", y = "mpg",
+          fill = "cyl",               # change fill color by cyl
+          color = "white",            # Set bar border colors to white
+          palette = "jco",            # jco journal color palett. see ?ggpar
+          sort.val = "asc",           # Sort the value in dscending order
+          sort.by.groups = TRUE,      # Sort inside each group
+          x.text.angle = 90           # Rotate vertically x axis texts
+          )
+
 # See these references:
 # http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/
 # http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
