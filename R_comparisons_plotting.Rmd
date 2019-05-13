@@ -1,0 +1,228 @@
+---
+title: "Test"
+author: "Steph Gervasi"
+date: "5/13/2019"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    theme: united
+---
+# Load package for this demo
+```{r}
+data(iris)
+head(iris)
+```
+
+# Run very short EDA
+```{r}
+str(iris)
+head(iris)
+levels(iris$Species)
+```
+
+# Summary Stats
+```{r}
+# install.packages("tidyverse")
+library(tidyverse)
+group_by(iris, Species) %>%
+  summarise(
+    count = n(),
+    mean = mean(Sepal.Length, na.rm = TRUE),
+    sd = sd(Sepal.Length, na.rm = TRUE)
+  )
+```
+
+# Visualizations
+## Boxplot with ggpubr
+```{r}
+# install.packages("ggpubr")
+library(ggpubr)
+ggboxplot(iris, x = "Species", y = "Sepal.Length", 
+          color = "Species", palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+          order = c("setosa", "versicolor", "virginica"),
+          ylab = "Sepal Length (in)", xlab = "Flower Species Name")
+```
+
+## Boxplot with ggplot2
+```{r}
+library(ggplot2)
+ggplot(iris, aes(x=Species, y=Sepal.Length, fill=Species)) + 
+  geom_boxplot() + theme_classic() + theme(legend.position = "top") + 
+  labs(x="Flower Species Name", y = "Sepal Length  (in)")
+```
+
+
+## Dot and line plot with ggpubr
+```{r}
+ggline(iris, x = "Species", y = "Sepal.Length", 
+       add = c("mean_se", "jitter"), 
+       order = c("setosa", "versicolor", "virginica"),
+       ylab = "Sepal Length (in)", xlab = "Flower Species Name")
+```
+
+# Run group comparison analysis **(ANOVA)**
+```{r}
+# Compute the analysis of variance
+aov1 <- aov(Sepal.Length ~ Species, data = iris)
+
+# Summary of the analysis
+summary(aov1)
+
+# Posthoc tests
+TukeyHSD(aov1)
+```
+
+# Check assumptions of analysis/model
+## Check homogeneity of variance assumption
+```{r}
+plot(aov1, 1)
+#plot(aov1)
+
+library(car)
+leveneTest(Sepal.Length ~ Species, data = iris)
+# From the output we can see that the p-value is less than the significance level of 0.05. This means that there is evidence to suggest that the variance across groups is statistically significantly different. Therefore, we cannot assume the homogeneity of variances in the different treatment groups.
+
+# It is possible to run a Welch's ANOVA where the assumption of homogeneity of variance is relaxed. It is implemented as follows in R:
+
+oneway.test(Sepal.Length ~ Species, data = iris)
+
+# Now pairwise t tests on this output:
+
+pairwise.t.test(iris$Sepal.Length, iris$Species,
+                 p.adjust.method = "BH", pool.sd = FALSE)
+```
+
+
+## Check normality assumption
+```{r}
+plot(aov1, 2)
+
+# Additional check for normality besides QQ plot produced above.
+
+# Extract the residuals
+aov_residuals <- residuals(object = aov1)
+
+# Run Shapiro-Wilk test
+shapiro.test(x = aov_residuals)
+
+# If this had been significant, it would indicate that we were in violation of the assumption of normality. We could transform our response variable, or could proceed with another, non-parametric, test. A non-parametric alternative to one-way ANOVA is Kruskal-Wallis rank sum test, which can be used when ANOVA assumptions are not met.
+
+kruskal.test(Sepal.Length ~ Species, data = iris)
+
+```
+
+# Some exploration with plotting in ggpubr
+## Multiple groups and Faceting
+```{r}
+data(ToothGrowth)
+head(ToothGrowth)
+p <- ggboxplot(ToothGrowth, x = "dose", y = "len",
+      color = "supp", palette = c("#00AFBB", "#E7B800"),
+      ylab = "Length", xlab = "Dose")
+print(p)
+
+facet(p, facet.by = "supp")
+```
+
+## Density plots
+```{r}
+# Density plot with mean lines and marginal rug
+# :::::::::::::::::::::::::::::::::::::::::::::::::::
+# Change outline and fill colors by groups
+# Use custom palette
+ggdensity(iris, x = "Sepal.Length",
+   add = "mean", rug = TRUE,
+   color = "Species", fill = "Species",
+   palette = c("#00AFBB", "#E7B800", "#FC4E07"))
+```
+
+## Histograms
+```{r}
+# Histogram plot with mean lines and marginal rug
+# :::::::::::::::::::::::::::::::::::::::::::::::::::
+# Change outline and fill colors by groups ("sex")
+# Use custom color palette
+gghistogram(iris, x = "Sepal.Length",
+   add = "mean", rug = TRUE,
+   color = "Species", fill = "Species",
+   palette = c("#00AFBB", "#E7B800", "#FC4E07"))
+```
+
+## Boxplots with jittered points
+```{r}
+# Box plots with jittered points
+# :::::::::::::::::::::::::::::::::::::::::::::::::::
+# Change outline colors by groups: dose
+# Use custom color palette
+# Add jitter points and change the shape by groups
+ p <- ggboxplot(ToothGrowth, x = "dose", y = "len",
+                color = "dose", palette =c("#00AFBB", "#E7B800", "#FC4E07"),
+                add = "jitter", shape = "dose")
+ p
+```
+
+## Kruskal Wallis
+```{r}
+head(ToothGrowth)
+str(ToothGrowth)
+
+# Convert the dose variable to a factor
+tg <- ToothGrowth
+tg$dose <- as.factor(tg$dose)
+head(tg)
+str(tg)
+
+# Perform the test
+kruskal.test(len ~ dose, data = tg)
+
+# multiple comparisons with Dunn test
+#install.packages("FSA")
+library(FSA)
+dunnTest(len ~ dose,
+              data=tg,
+              method="bh")    # Can adjust p-values;
+                              # See ?p.adjust for options
+
+# multiple comparisons using wilcoxon test :THIS APPEARS TO BE WHAT IS USED IN THE GRAPHS BELOW!!!
+pairwise.wilcox.test(tg$len,
+                          tg$dose,
+                          p.adjust.method="none")
+                              # Can adjust p-values;
+                              # See ?p.adjust for options
+
+```
+
+
+## Boxplots with stats output!
+```{r}
+# Add p-values comparing groups
+ # Specify the comparisons you want
+my_comparisons <- list( c("0.5", "1"), c("1", "2"), c("0.5", "2") )
+p + stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
+  stat_compare_means(label.y = 50)                   # Add global p-value
+```
+
+## Violin with box plots including stats output
+```{r}
+# Violin plots with box plots inside
+# :::::::::::::::::::::::::::::::::::::::::::::::::::
+# Change fill color by groups: dose
+# add boxplot with white fill color
+ggviolin(ToothGrowth, x = "dose", y = "len", fill = "dose",
+         palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+         add = "boxplot", add.params = list(fill = "white")) +
+  stat_compare_means(comparisons = my_comparisons, label = "p.signif")+ # Add significance levels
+  stat_compare_means(label.y = 50)                                      # Add global the p-value 
+```
+
+## Bar plots and references
+```{r}
+# See these references:
+# http://www.sthda.com/english/articles/24-ggpubr-publication-ready-plots/
+# http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
+# http://www.sthda.com/english/wiki/one-way-anova-test-in-r
+# https://rcompanion.org/rcompanion/d_06.html
+  
+```
+
